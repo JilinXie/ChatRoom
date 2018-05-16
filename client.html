@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+</head>
+
+<body>
+<label> UserName: </label> <input type="text" id="username">
+<button onclick="login()"> login </button>
+<br>
+<ul id="userlist">
+</ul>
+<label> PeerName (broadcast if null)</label><input type="text" id="peername">
+<br>
+<textarea id="writeboard"></textarea> <button onclick="talk()"> send </button>
+<br>
+<textarea id="chatboard" readonly></textarea>
+
+<!--
+Login:
+    cli -> server
+        {"operation": "login", "data": {"username": USERNAME(STRING)}} 
+    server -> cli
+        {"operation": "login", "data": {"state": STATE(BOOL)}}
+ListUser:
+    server -> cli
+        {"operation": "listuser", "data": {"usernames": USERNAMES(LIST)}}
+-->
+
+<script>
+    //UI methods
+    function update_userlist(usernames) {
+        let userlist = document.getElementById("userlist");
+        userlist.innerHTML = "";
+        for (let i in usernames) {
+            userlist.innerHTML += "<li>" + usernames[i] + "</li>";
+        }
+    }
+
+    function update_chatboard(content, username) {
+        let chatboard = document.getElementById("chatboard");
+        chatboard.value += username + ": " + content + '\n';
+    }
+</script>
+
+<script>
+
+    var signalChannel = null;
+
+    //TODO: Each time login is called, a new
+    function login() {
+        if (signalChannel !== null) {
+            signalChannel.close(1000);
+        }
+        signalChannel = new WebSocket("ws://localhost:9090");
+        signalChannel.onmessage = signalMessageHandler;
+        signalChannel.onclose = signalCloseHandler;
+        signalChannel.onopen = function () {
+            sign_to_userlist();
+        }
+    }
+    function signalMessageHandler(raw_msg) {
+        /* TODO: data validity checking */
+        let msg = {};
+        try {
+            msg = JSON.parse(raw_msg.data);
+        } catch(e) {
+            console.log("Invalid msg format");
+            return;
+        }
+
+        switch (msg.operation) {
+            case "login":
+                if (msg.data.state) {
+                    console.log("login: " + msg.data.state);
+                } else {
+                    alert("login fail");
+                }
+                break;
+            case "listuser":
+                update_userlist(msg.data.usernames);
+                console.log("users: " + msg.data.usernames);
+                break;
+            case "talk":
+                update_chatboard(msg.data.content, msg.data.talker);
+                break;
+            default:
+                break;
+        }
+    }
+    function signalCloseHandler(evt) {
+        switch (evt.code) {
+            case 1000:
+                console.log("Connection Closed");
+                break;
+            default:
+                // Reconnect in 3 seconds if connection broken.
+                setTimeout(login, 3*1000);
+                break;
+        }
+    }
+
+    function sendMsg(msg) {
+        signalChannel.send(JSON.stringify(msg));
+    }
+
+
+    /* --------- actions with ws server ------------- */
+
+    function sign_to_userlist() {
+        let username = document.getElementById("username").value;
+        let command = {operation: "login",
+                       data: {username: username}};
+        sendMsg(command);
+    }
+
+    function talk() {
+        let peername = document.getElementById("peername").value;
+        let text = document.getElementById("writeboard").value;
+        if (text === "") {
+            alert("nothing to send");
+            return;
+        }
+        update_chatboard(text, 'I');
+        let command = {operation: "talk",
+                       data: {peername: peername,
+                              content: text}}
+
+        document.getElementById("writeboard").value = "";
+        sendMsg(command);
+    }
+
+</script>
+</body>
+
+</html>
