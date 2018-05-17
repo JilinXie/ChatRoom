@@ -1,0 +1,9 @@
+<script>
+    var signalChannel = new WebSocket("ws://localhost:9090");
+    signalChannel.onmessage = function(raw_msg) {
+        console.log(raw_msg.data);
+    }
+    signalChannel.onopen = function() {
+        signalChannel.send("hello");
+    }
+</script>
