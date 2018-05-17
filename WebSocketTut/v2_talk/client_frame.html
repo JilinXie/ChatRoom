@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+
+<!-- username shown to other peers -->
+<label> UserName: </label> <input type="text" id="username">
+<button> login </button>
+<br>
+<!-- list of all other peers -->
+<ul id="userlist">
+</ul>
+
+<!-- peer name to talk to (empty to talk to all) -->
+<label> PeerName (broadcast if null)</label><input type="text" id="peername">
+<br>
+
+<!-- chat here -->
+<textarea id="writeboard" style="width:300px;height:200px;"></textarea>
+<button> send </button>
+<br>
+
+<!-- board showing other's saying -->
+<textarea id="chatboard" style="width:300px;height:200px;" readonly></textarea>
+<script>
+    var signalChannel = new WebSocket("ws://localhost:9090");
+    signalChannel.onmessage = function(raw_msg) {
+        let msg = {};
+        try {
+            msg = JSON.parse(raw_msg.data);
+        } catch(e) {
+            console.log("Invalid msg format");
+            return;
+        }
+
+        switch (msg.operation) {
+            case "login":
+                //handle login;
+                break;
+            case "listuser":
+                //handle list user;
+                break;
+            case "talk":
+                //handle talk;
+                break;
+            default:
+                break;
+        }
+
+    }
+</script>
+
+</html>

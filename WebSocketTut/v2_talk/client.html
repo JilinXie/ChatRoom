@@ -1,9 +1,88 @@
+<!DOCTYPE html>
+<html>
+
+<!-- username shown to other peers -->
+<label> UserName: </label> <input type="text" id="username">
+<button onclick="login()"> login </button>
+<br>
+<!-- list of all other peers -->
+<ul id="userlist">
+</ul>
+
+<!-- peer name to talk to (empty to talk to all) -->
+<label> PeerName (broadcast if null)</label><input type="text" id="peername">
+<br>
+
+<!-- chat here -->
+<textarea id="writeboard" style="width:300px;height:200px;"></textarea>
+<button onclick="talk()"> send </button>
+<br>
+
+<!-- board showing other's saying -->
+<textarea id="chatboard" style="width:300px;height:200px;" readonly></textarea>
 <script>
     var signalChannel = new WebSocket("ws://localhost:9090");
     signalChannel.onmessage = function(raw_msg) {
-        console.log(raw_msg.data);
+        let msg = {};
+        try {
+            msg = JSON.parse(raw_msg.data);
+        } catch(e) {
+            console.log("Invalid msg format");
+            return;
+        }
+
+        switch (msg.operation) {
+            case "login":
+                login();
+                break;
+            case "listuser":
+                update_userlist(msg.data.usernames);
+                break;
+            case "talk":
+                update_chatboard(msg.data.content, msg.data.talker);
+                break;
+            default:
+                break;
+        }
+
     }
-    signalChannel.onopen = function() {
-        signalChannel.send("hello");
+
+    function sendMsg(msg) {
+        signalChannel.send(JSON.stringify(msg));
+    }
+
+    function login() {
+        let username = document.getElementById("username").value;
+        let command = {operation: "login",
+                       data: {username: username}};
+        sendMsg(command);
+    }
+
+    function update_userlist(usernames) {
+        let userlist = document.getElementById("userlist");
+        userlist.innerHTML = "";
+        for (let i in usernames) {
+            userlist.innerHTML += "<li>" + usernames[i] + "</li>";
+        }
+    }    
+
+    function talk() {
+        let text = document.getElementById("writeboard").value;
+        if (text === "") {
+            alert("nothing to send");
+            return;
+        }
+        let command = {operation: "talk",
+                       data: {peername: '',
+                              content: text}}
+
+        document.getElementById("writeboard").value = "";
+        sendMsg(command);
+    }
+    function update_chatboard(content, username) {
+        let chatboard = document.getElementById("chatboard");
+        chatboard.value += username + ": " + content + '\n';
     }
 </script>
+
+</html>
